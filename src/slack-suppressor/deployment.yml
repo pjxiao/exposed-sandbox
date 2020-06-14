@@ -1,0 +1,34 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slacksuppressor-deployment
+  labels:
+    app: slacksuppressor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: slacksuppressor
+  template:
+    metadata:
+      labels:
+        app: slacksuppressor
+    spec:
+      containers:
+        - name: slacksuppressor
+          image: localhost/slacksuppresor:latest
+          imagePullPolicy: Never
+          volumeMounts:
+            - name: slacksuppressor-dotenv
+              mountPath: '/opt/app/.env'
+              subPath: .env
+              readOnly: true
+      volumes:
+        - name: slacksuppressor-dotenv
+          secret:
+            secretName: slacksuppressor-secret
+            items:
+              - key: dotenv
+                path: '.env'
+                mode: 0444
