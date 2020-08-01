@@ -1,2 +1,7 @@
 .env
 venv
+
+# local settings 
+src/**/.*.yml
+src/**/.*.yaml
+src/**/.*.conf

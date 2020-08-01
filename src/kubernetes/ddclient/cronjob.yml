@@ -1,0 +1,35 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: ddclient
+  labels:
+    component: cronjob
+    app: ddclient
+spec:
+  schedule: "7 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            component: app
+            app: ddclient
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: ddclient
+              imagePullPolicy: Never
+              image: local/ddclient:latest
+              volumeMounts:
+                - name: secrets
+                  mountPath: /etc/ddclient.conf
+                  subPath: ddclient.conf
+                  readOnly: true
+          volumes:
+            - name: secrets
+              secret:
+                secretName: ddclient-secret
+                items:
+                  - key: ddclient.conf
+                    path: ddclient.conf
+                    mode: 0400
