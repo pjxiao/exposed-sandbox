@@ -1,0 +1,13 @@
+server {
+    listen ${NGINX_PORT};
+    
+    location / {
+        default_type text/plain;
+        return 200 '${NGINX_200_TEXT}';
+    }
+
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}
