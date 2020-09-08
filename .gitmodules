@@ -1,0 +1,3 @@
+[submodule "src/kubernetes/redmine/redmine"]
+	path = src/kubernetes/redmine/redmine
+	url = https://github.com/redmine/redmine.git
