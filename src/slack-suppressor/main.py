@@ -1,12 +1,17 @@
+import argparse
 import copy
 import dataclasses
 import datetime
 import enum
-from os import times
-from pprint import pprint
+import json
+import logging
+import logging.config
+from functools import wraps
+import pprint
 import re
 from typing import (
     Any,
+    Callable,
     Dict,
     Generic,
     List,
@@ -18,6 +23,10 @@ from typing import (
 import slack
 from slack.web.slack_response import SlackResponse
 import requests
+
+
+logger = logging.getLogger()
+
 
 # Common
 # ======
@@ -60,7 +69,12 @@ class WebAppClient:
         self.token = token
         self.base_url = base_url.rstrip('/')
 
-    def request(self, method: str, path: str, data: Dict[str, str]) -> requests.Response:
+    def request(
+        self,
+        method: str,
+        path: str,
+        data: Dict[str, str],
+    ) -> requests.Response:
         url = f'{self.base_url}/{path.rstrip("/")}'
         data = {'token': self.token, **data}
         cookies = {
@@ -69,6 +83,22 @@ class WebAppClient:
             [c.split('=', 1) for c in self.cookie.split(';')]
         }
         return requests.request(method, url, data=data, cookies=cookies)
+
+
+def guard(
+    pred: Callable[['State'], bool],
+) -> Callable[[Callable], Callable]:
+    def deco(f: Callable[..., None]):
+        @wraps(f)
+        def wrapper(state: 'State', *args, **kwargs) -> None:
+            if pred(state):
+                return f(state, *args, **kwargs)
+            else:
+                return None
+
+        return wrapper
+
+    return deco
 
 
 # Data structures
@@ -248,8 +278,7 @@ class Store:
                 try:
                     subscriber()
                 except Exception:
-                    import traceback
-                    print('a subscriber raised an exception', traceback.format_exception(*sys.exc_info()))
+                    logger.exception('a subscriber raised an exception')
 
     def subscribe(self, subscriber):
         self.subscribers += [subscriber]
@@ -277,8 +306,7 @@ class Reducer:
             try:
                 return reducer(state, action)
             except Exception:
-                import traceback
-                print('an error occured during reducing', traceback.format_exception(*sys.exc_info()))
+                logger.exception('an error occured during reducing')
         else:
             return state
 
@@ -346,18 +374,53 @@ def ac_reaction_removed(payload):
     return Action(
         ACTION_TYPES.REACTION_REMOVED,
         payload,
-    )    
+    )
 
 
 # Subscribers
 # ===========
 
+#: if the latest event is a message
+_is_message = guard(lambda s: s.is_ready and isinstance(s.latest, Message))
+#: if the latest event is a reaction
+_is_reaction = guard(lambda s: s.is_ready and isinstance(s.latest, Reaction))
+#: if the latest event happend in a thread
+_is_in_thread = guard(lambda s: s.latest.thread_ts is not None)
+#: if the event was fired by me
+_is_mine = guard(lambda s: s.latest.user == s.self_id)
 
-def suppress(state: State, client: WebAppClient):
-    if not state.is_ready or type(state.latest) != Message:
-        return
 
-    if state.latest.channel in state.prefs.muted_channels:
+@_is_message
+def suppress(
+    state: State,
+    client: WebAppClient,
+    include_muted_channels: bool,
+    include_dm: bool,
+    include: List[str],
+    exclude: List[str],
+):
+    def should_be_muted(
+        state: State,
+        include_muted_channels: bool,
+        include_dm: bool,
+        include: List[str],
+        exclude: List[str],
+    ):
+        if not include_dm and state.latest.channel[0] in ['G', 'U']:
+            return False
+
+        return (
+            include_muted_channels and
+            state.latest.channel in state.prefs.muted_channels
+        ) or (
+            include and
+            state.latest.channel in include
+        ) or (
+            exclude and
+            state.latest.channel not in exclude
+        )
+
+    if should_be_muted(state, include_muted_channels, include_dm, include, exclude):
         response = client.request(
             'POST',
             '/api/conversations.mark',
@@ -367,54 +430,67 @@ def suppress(state: State, client: WebAppClient):
             },
         )
         if response.status_code != 200:
-            pprint(response.content)
+            logger.error(
+                'Failed to call the API: status_code=%s, content=%s',
+                response.status_code,
+                response.content,
+            )
         else:
-            print('suppressed', state.latest.channel, state.latest.ts)
-
-
-def suppress_thread(state: State, client: WebAppClient):
-    if not state.is_ready or type(state.latest) != Message:
-        return
-
-    if state.latest.thread_ts is not None:
-        response = client.request(
-            'POST',
-            '/api/subscriptions.thread.mark',
-            {
-                'channel': state.latest.channel,
-                'thread_ts': state.latest.thread_ts,
-                'ts': state.latest.ts,
-                'read': '1',
-            },
-        )
-        if response.status_code != 200:
-            pprint(response.content)
-        else:
-            print('a thread suppressed', state.latest.channel, state.latest.ts)
-
-
-def suggest_time_card(state):
-    if not state.is_ready or type(state.latest) != Message:
-        return
-
-    if state.latest.user == state.self_id:
-        if (
-            'おわり' in state.latest.text or
-            '終わり' in state.latest.text or
-            '開始' in state.latest.text or
-            'かいし' in state.latest.text
-        ):
-            text = '出勤簿を忘れずに: ' + os.environ['APP_TIME_CARD']
-            state.web_client.chat_postMessage(
-                channel=os.environ['APP_DM_TO_SELF'],
-                text=text,
+            logger.info(
+                'a message has been suppressed: channel=%s, ts=%s',
+                state.latest.channel,
+                state.latest.ts,
             )
 
 
-def mark_unread(state: State):
-    if not state.is_ready or type(state.latest) != Message:
-        return
+@_is_message
+@_is_in_thread
+def suppress_thread(state: State, client: WebAppClient):
+    response = client.request(
+        'POST',
+        '/api/subscriptions.thread.mark',
+        {
+            'channel': state.latest.channel,
+            'thread_ts': state.latest.thread_ts,
+            'ts': state.latest.ts,
+            'read': '1',
+        },
+    )
+    if (
+        (response.status_code != 200) or
+        (not response.json()['ok'])
+    ):
+        logger.error(
+            'Failed to call the API: status_code=%s, content=%s',
+            response.status_code,
+            response.content,
+        )
+    else:
+        logger.info(
+            'the message in a thread has been suppressed: channel=%s, ts=%s',
+            state.latest.channel,
+            state.latest.ts,
+        )
 
+
+@_is_message
+@_is_mine
+def suggest_time_card(state):
+    if (
+        'おわり' in state.latest.text or
+        '終わり' in state.latest.text or
+        '開始' in state.latest.text or
+        'かいし' in state.latest.text
+    ):
+        text = '出勤簿を忘れずに: ' + os.environ['APP_TIME_CARD']
+        state.web_client.chat_postMessage(
+            channel=os.environ['APP_DM_TO_SELF'],
+            text=text,
+        )
+
+
+@_is_message
+def mark_unread(state: State):
     def in_usergroup(
         client: slack.WebClient,
         user: str,
@@ -422,7 +498,7 @@ def mark_unread(state: State):
     ):
         for usergroup in R_SUBTEAM.findall(text):
             resp = client.usergroups_users_list(usergroup=usergroup)
-            if (resp['ok'] == True) and (user in resp['users']):
+            if resp['ok'] and (user in resp['users']):
                 return True
         else:
             return False
@@ -439,31 +515,45 @@ def mark_unread(state: State):
                 timestamp=state.latest.ts,
             )
         except slack.errors.SlackApiError as e:
-            print('e', e)
             if e.response['error'] != 'already_reacted':
                 raise
 
 
+@_is_reaction
+@_is_mine
+@guard(lambda s: (
+    (s.latest.reaction == os.environ['APP_UNREAD_REACTION']) and
+    (s.latest.state == REACTION_STATE.REMOVED)
+))
 def mark_read(state: State):
-    if not state.is_ready or type(state.latest) != Reaction:
-        return
+    name = os.environ['APP_READ_REACTION']
+    try:
+        logger.info(
+            'marking as read: channel=%s, ts=%s',
+            state.latest.channel,
+            state.latest.ts,
+        )
+        state.web_client.reactions_add(
+            channel=state.latest.channel,
+            name=name,
+            timestamp=state.latest.ts,
+        )
+    except slack.errors.SlackApiError as e:
+        if e.response['error'] != 'already_reacted':
+            raise
 
-    if (
-        (state.latest.user == state.self_id) and
-        (state.latest.reaction == os.environ['APP_UNREAD_REACTION']) and
-        (state.latest.state == REACTION_STATE.REMOVED)
-    ):
-        name = os.environ['APP_READ_REACTION']
-        try:
-            print('latest', state.latest)
-            state.web_client.reactions_add(
-                channel=state.latest.channel,
-                name=name,
-                timestamp=state.latest.ts,
+
+@_is_message
+@_is_mine
+def on_message(state: State, conf: List[Dict[str, str]]):
+    for c in conf:
+        method = getattr(state.latest.text, c['method'])
+        assert callable(method)
+        if method(*c['arguments']):
+            state.web_client.chat_postMessage(
+                channel=c['channel'],
+                text=c['text'],
             )
-        except slack.errors.SlackApiError as e:
-            if e.response['error'] != 'already_reacted':
-                raise
 
 
 def main_debug(argv):
@@ -472,9 +562,7 @@ def main_debug(argv):
     print(client.usergroups_users_list(usergroup='S0NCX9B1P'))
 
 
-
 def main_suppress(argv):
-    import pprint
     token = os.environ['SLACK_USER_ACCESS_TOKEN']
     rtm_client = slack.RTMClient(token=token)
 
@@ -486,15 +574,20 @@ def main_suppress(argv):
         web_app_token,
         web_app_base_url,
     )
+    on_message_conf = json.loads(os.environ.get('APP_ON_MESSAGE_CONF', '[]'))
 
     store = Store(Reducer())
 
-    store.subscribe(lambda: pprint.pprint(store.state))
-    store.subscribe(lambda: suppress(store.state, web_app_client))
+    store.subscribe(lambda: logger.info(
+        'state=%s',
+        pprint.pformat(store.state)
+    ))
+    store.subscribe(lambda: suppress(store.state, web_app_client, argv.include_muted_channels, argv.include_dm, argv.include, argv.exclude))  # noqa: E501
     store.subscribe(lambda: suppress_thread(store.state, web_app_client))
     store.subscribe(lambda: suggest_time_card(store.state))
     store.subscribe(lambda: mark_unread(store.state))
     store.subscribe(lambda: mark_read(store.state))
+    store.subscribe(lambda: on_message(store.state, on_message_conf))
 
     rtm_client.run_on(event='open')(lambda **payload: store.dispatch(
         ac_open(payload),
@@ -502,7 +595,8 @@ def main_suppress(argv):
     rtm_client.run_on(event='message')(lambda **payload: store.dispatch(
         ac_message(payload),
     ))
-    rtm_client.run_on(event='reaction_removed')(lambda **payload: store.dispatch(
+    rtm_client.run_on(event='reaction_removed')(lambda **payload: store.dispatch(  # noqa: E501
+
         ac_reaction_removed(payload),
     ))
 
@@ -510,11 +604,67 @@ def main_suppress(argv):
 
 
 def main(argv):
-    cmd, *argv = argv or ['UNKNOWN']
-    return {
-        'suppress': main_suppress,
-        'debug': main_debug,
-    }.get(cmd, print)(argv)
+    # configure a logging facility
+    logging.config.dictConfig({
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'level': 'INFO',
+                'class': 'logging.StreamHandler',
+                'formatter': 'default',
+                'filters': [],
+            },
+        },
+        'formatters': {
+            'default': {
+                'format': '%(asctime)s %(levelname)-8s %(name)-15s %(message)s',  # noqa: E501
+                'datefmt': '%Y-%m-%d %H:%M:%S'
+            },
+        },
+        'root': {
+            'level': 'INFO',
+            'handlers': ['console'],
+        },
+    })
+
+    # create a parent parser
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(required=True)
+
+    # configure a subparser for supress
+    parser_suppress = subparsers.add_parser('suppress')
+    parser_suppress.add_argument(
+        '--include-dm',
+        action='store_true',
+        default=False,
+    )
+    parser_suppress.add_argument(
+        '--include-muted-channels',
+        action='store_true',
+        default=True,
+    )
+    inc_exc_group = parser_suppress.add_mutually_exclusive_group()
+    inc_exc_group.add_argument(
+        '--include',
+        help='channels to be suppressed',
+        nargs='*',
+        type=str,
+    )
+    inc_exc_group.add_argument(
+        '--exclude',
+        help='channels not to be suppressed',
+        nargs='*',
+        type=str,
+    )
+    parser_suppress.set_defaults(func=main_suppress)
+
+    # configure a subparser for debug
+    parser_debug = subparsers.add_parser('debug')
+    parser_debug.set_defaults(func=main_debug)
+
+    args = parser.parse_args(argv or [''])
+    return args.func(args)
 
 
 if __name__ == '__main__':
@@ -523,9 +673,9 @@ if __name__ == '__main__':
 
     if os.path.isfile('.env'):
         with open('.env') as f:
-            for l in f.read().split('\n'):
-                if l and not l.startswith('#'):
-                    k, v = l.split('=', 1)
+            for line in f.read().split('\n'):
+                if line and not line.startswith('#'):
+                    k, v = line.split('=', 1)
                     os.environ[k.rstrip()] = v.lstrip()
 
     main(list(sys.argv[1:]))
