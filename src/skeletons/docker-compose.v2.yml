@@ -1,0 +1,23 @@
+version: '2'
+services:
+  app:
+    build: .
+    environment:
+      APP_XXX:
+    volumes:
+      - .:/io
+    ports:
+      - ${APP_PORT}:8000
+
+  db:
+    image: mysql:5.7
+    restart: always
+    command:
+      - 'mysqld'
+      - '--character-set-server=utf8mb4'
+      - '--collation-server=utf8mb4_unicode_ci'
+    volumes:
+      - db-volume:/var/lib/mysql
+
+volumes:
+  db-volume:
