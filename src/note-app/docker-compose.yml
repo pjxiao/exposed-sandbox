@@ -1,0 +1,10 @@
+version: '2'
+services:
+  app:
+    image: node:lts-buster-slim
+    environment: {}
+    working_dir: /io
+    volumes:
+      - .:/io
+    ports: []
+      # - ${APP_PORT}:8000

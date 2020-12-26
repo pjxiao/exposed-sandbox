@@ -19,6 +19,9 @@ spec:
         - name: slacksuppressor
           image: localhost/slacksuppresor:latest
           imagePullPolicy: Never
+          env:
+            - name: PYTHONUNBUFFERED
+              value: '1'
           volumeMounts:
             - name: slacksuppressor-dotenv
               mountPath: '/opt/app/.env'
