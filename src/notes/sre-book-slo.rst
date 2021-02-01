@@ -1,6 +1,7 @@
 My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-objectives/>`_
 
-# Service Level Objectives
+Service Level Objectives
+========================
 
 * Identifying which behaviours of a system, measure and evaluate them is crucial to run the system correctly
 * They defined and delivered a *level of service* to their users
@@ -18,12 +19,14 @@ My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-
    * metric selection
    * metric analysis
 
-## Service Level Terminology
+Service Level Terminology
+--------------------------
 
 * Though some of us've been familiar with *SLA*, it is ambiguous what *SLA* is.
 * They separated *SLA* into three concepts (*SLI*, *SLO* and *SLA*) to clarity its meanign.
 
-###  Indicators (SLIs)
+Indicators (SLIs)
+--------------------------
 
 * An SLI is a measure of the level of a service from a certain point of view.
 * Typical measures:
@@ -46,7 +49,8 @@ My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-
 * Again, 100% availability is unicorn idea but near-100% availability is not.
 
 
-### Objectives
+Objectives
+--------------------------
 
 * An SLO is a *service level objective*
 * An SLO is a target value or range of a service level mesured by an SLI
@@ -68,7 +72,8 @@ My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-
    * This can reduce users' too much expectations
    * Otherwise, the users incorrectly believe that service will be more available that actual it is
 
-### Agreements
+Agreements
+--------------------------
 
 * An SLO is a *service level agreement*
 * an SLA is an explicit/implicit contract
@@ -87,12 +92,13 @@ My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-
 
 * Defining SLIs and SLOs is valuable to run our services.
 
-
-## Indicators in Practice
+Indicators in Practice
+=======================
 
 * How can we define meaningful metrics?
 
-### What Do You and Your Users Care About?
+What Do You and Your Users Care About?
+-----------------------------------------------
 
 * We shouldn't use all metrics we can monitor.
 * Instead, choose a few meaningful metrics.
@@ -124,15 +130,16 @@ My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-
     * Correctness essentially depends on the system rather than the infrastructure
     * SREs usually aren't responsible to correctness
 
-### Collecting Indicators
+Collecting Indicators
+--------------------------
 
 * Many indicator metrics come from the *server*-side using a monitoring system or log analysis
 * Some metrics which doesn't affect server-side metrics come from the *client*-side
 
   * e.g. Poor latency caused by JavaScript
 
-
-### Aggregation
+Aggregation
+--------------------------
 
 .. figure:: https://lh3.googleusercontent.com/G-Ljl-lx35hRTILL9pwj-ty2S5KE8piLPmx4wZSoaLpnfvw4WgdseYm-X5ZPCMNZS01eJmyZFwjHL4yK3ptj6WglYlX20Oi3dxA=s900
    :alt: Fig 4-1. 5% of requests are 20 times slower than the average.
@@ -157,12 +164,14 @@ My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-
 
 * Users prefer a slightly slower systems rather than high variance in response time.
 
-###  A Note on Statistical Fallacies
+A Note on Statistical Fallacies
+---------------------------------
 
 * They prefer to use percentiles  rather than average
 * Indicators are often skewed, are not normally distributed.
 
-### Standardize Indicators
+Standardize Indicators
+---------------------------------
 
 * Standardisation of definitions of SLIs are recommend.
 * Standardisation save effort and allow us easy understanding
@@ -175,12 +184,14 @@ My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-
   * How the data is acquired: Through our monitoring, measured at the server
   * Data-access latency: Time to last byte
 
-## Objectives in Practice
+Objectives in Practice
+=============================
 
 * Don't start with what we can measure not to set useless objectives
 * Start with what desired objectives are
 
-### Defining Objectives
+Defining Objectives
+---------------------------------
 
 * SLOs should specify:
 
@@ -205,7 +216,8 @@ My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-
 * The SLO violation rate can be compared against the error budget (see Motivation for Error Budgets)
 
 
-### Choosing Targets (SLOs)
+Choosing Targets (SLOs)
+---------------------------------
 
 * Because business implications and constraints affect SLOs (, SLIs and SLAs), choosing SLOs is not a purely technical job.
 * SREs can advice on the risks and viability of options, taking part in the conversion.
@@ -236,7 +248,8 @@ My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-
     * We can aloways change SLO
     * Start with a loose target
 
-### Control Measures
+Control Measures
+---------------------------------
 
 * We can't take any actions without SLOs
 
@@ -250,7 +263,8 @@ My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-
           action <- figure out *what* to do to meet the target
           take(action)
 
-### SLOs Set Expectations
+SLOs Set Expectations
+---------------------------------
 
 * Publishing SLOs lets users know if the system is appropriate for ther use case.
 * To make users set realistic expectations, Adopt one or both of these tactics:
@@ -266,7 +280,8 @@ My note of `Chater 4 of the SRE book <https://sre.google/sre-book/service-level-
     * Throttling requests and taking the system offline sometimes
       avoid over-dependencies
 
-## Agreements in Practice
+Agreements in Practice
+===============================
 
 * Business and leagal teames set appropriate consequences of missing SLOs
 * SREs convince them of the likelihood and difficulty of meeting the SLOs.
