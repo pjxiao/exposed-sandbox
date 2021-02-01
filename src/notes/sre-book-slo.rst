@@ -8,16 +8,16 @@ Service Level Objectives
 
 * Three service level measurements:
 
-   * *indicators* (SLIs)
-   * *objectives* (SLOs)
-   * *agreements* (SLAs)
+  * *indicators* (SLIs)
+  * *objectives* (SLOs)
+  * *agreements* (SLAs)
 
 * By choosing appropriate metrics, we can react with confidence when something goes wrong.
 * The framework described in this chapter deals with:
 
-   * metric modeling
-   * metric selection
-   * metric analysis
+  * metric modeling
+  * metric selection
+  * metric analysis
 
 Service Level Terminology
 --------------------------
@@ -31,20 +31,20 @@ Indicators (SLIs)
 * An SLI is a measure of the level of a service from a certain point of view.
 * Typical measures:
 
-   * request latency
-   * error rate
-   * system throughput
-   * availability
-   * yield: the fraction of well-formed requests that succeed
-   * durability: the likelihood that data will be retained over a long period of time
+  * request latency
+  * error rate
+  * system throughput
+  * availability
+  * yield: the fraction of well-formed requests that succeed
+  * durability: the likelihood that data will be retained over a long period of time
 
 * Measurements may be aggregated within a mesurement window
   using aggregation functions such as averate, rate or percentile.
 * When it is sometimes hard to mesure metrics directly,
   there may exist some indirect (proxy) mesures.
 
-   * For example, client-side latency is often the more user-relevant metric,
-     but it might only be possible to measure latency at the server.
+  * For example, client-side latency is often the more user-relevant metric,
+    but it might only be possible to measure latency at the server.
 
 * Again, 100% availability is unicorn idea but near-100% availability is not.
 
@@ -56,21 +56,21 @@ Objectives
 * An SLO is a target value or range of a service level mesured by an SLI
 * An SLO contrains is:
 
-   * SLI <= trget or
-   * lower bound <= SLI <= upper bound
+  * SLI <= trget or
+  * lower bound <= SLI <= upper bound
 
 * It's complicated to choose a proper SLO
 
-   * As a QPS (queries/sec) is determined by (the number of) users,
-     we can't set an SLO for that.
-   * Instead, we can set an SLO for the average latency per request
-   * QPS and latency are correlated
+  * As a QPS (queries/sec) is determined by (the number of) users,
+    we can't set an SLO for that.
+  * Instead, we can set an SLO for the average latency per request
+  * QPS and latency are correlated
 
 * Publishing choosed SLOs to users
 
-   * This tell users how well they can expect to the service perform
-   * This can reduce users' too much expectations
-   * Otherwise, the users incorrectly believe that service will be more available that actual it is
+  * This tell users how well they can expect to the service perform
+  * This can reduce users' too much expectations
+  * Otherwise, the users incorrectly believe that service will be more available that actual it is
 
 Agreements
 --------------------------
