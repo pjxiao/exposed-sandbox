@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { AppThunk, RootState } from "../../app/store";
 
-type State = 'ANON' | 'AUTHED';
+type State = 'PENDING' | 'REQUESTED' | 'AUTHED';
 
 interface LoginState {
     state: State;
@@ -10,8 +10,7 @@ interface LoginState {
 };
 
 const initialState: LoginState = {
-    state: 'ANON',
-    // state: 'AUTHED',
+    state: 'PENDING',
     apiKey: '',
     clientId: '',
 };
@@ -55,16 +54,15 @@ export const login = (): AppThunk => (dispatch, getState) => {
     };
     gapi.load('client:auth2', () => {
         console.log('client:auth2 has been loaded');
-        console.log(JSON.stringify(params));
+        // console.log(JSON.stringify(params));
         gapi.client
             .init(params)
             .then(() => {
-                console.log();
                 const googleAuth = gapi.auth2.getAuthInstance();
                 googleAuth.isSignedIn.listen(() => dispatch(setState('AUTHED')));
                 googleAuth.signIn().then(() => dispatch(setState('AUTHED')));
             })
-            .catch(function () {console.error(arguments)});
+            .catch((e) => console.error(e));
     });
 };
 

@@ -1,12 +1,13 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { AppThunk, RootState } from "../../app/store";
+import { post as postSpreadsheet, get as getSpreadsheet } from "../../repositories/SpreadsheetRepository";
+import { setState as setLoginState } from "../../features/login/loginSlice";
 
 const COL_SECTION = 'section';
 const COL_NUMBER = '#';
 const COL_JA = '日本語';
 const COL_EN = '英語';
-const COL_GRAMMAR = '構文';
-const COL_NOTE = '備考';
+const COL_NOTE = '解説';
 
 type State = 'READY' | 'LOADING' | 'LOADED' | 'FAILED';
 type Visibility = 'HIDDEN' | 'SHOWN';
@@ -16,7 +17,6 @@ interface Row {
     num: number,
     ja: string,
     en: string,
-    grammar: string,
     note: string,
 };
 
@@ -30,11 +30,13 @@ interface TrainingState {
 };
 
 
+/*
 const EXAMPLE: Array<Row> = [
-    {"section":1,"num":1,"ja":"スーザンの家のいちばん大きい部屋は居間でです。","en":"The largetst room in Suzan's house is the living room.","grammar":"","note":""},
-    {"section":1,"num":2,"ja":"（その）隣の部屋は食堂です。","en":"The next room is the dining room.","grammar":"","note":""},
-    {"section":1,"num":3,"ja":"浴室は玄関のはずれにあります。","en":"The bathroom is at the end of the hall.","grammar":"","note":""},
+    {"section":1,"num":1,"ja":"スーザンの家のいちばん大きい部屋は居間でです。","en":"The largetst room in Suzan's house is the living room.","note":""},
+    {"section":1,"num":2,"ja":"（その）隣の部屋は食堂です。","en":"The next room is the dining room.","note":""},
+    {"section":1,"num":3,"ja":"浴室は玄関のはずれにあります。","en":"The bathroom is at the end of the hall.","note":""},
 ];
+*/
 
 const initialState: TrainingState = {
     state: 'READY',
@@ -53,6 +55,11 @@ export const trainingSlice = createSlice({
     name: 'training',
     initialState,
     reducers: {
+        clearState: (state) => {
+            state.state = 'READY';
+            state.spreadsheetId = null;
+            state.data = null;
+        },
         setState: (state, action: PayloadAction<State>) => {
             state.state = action.payload;
         },
@@ -98,7 +105,7 @@ export const trainingSlice = createSlice({
     }
 });
 
-export const {setState, setSpreadsheetId, setData, next, prev, toggleVisibility} = trainingSlice.actions;
+export const {clearState, setState, setSpreadsheetId, setData, next, prev, toggleVisibility} = trainingSlice.actions;
 
 export const selectCurrent = (state: RootState) =>
     state.training.data === null
@@ -107,41 +114,45 @@ export const selectCurrent = (state: RootState) =>
 ;
 export const selectState = (state: RootState) => state.training;
 
-export const load = (): AppThunk => (dispatch, getState) => {
-    const {spreadsheetId, sheet} = getState().training;
-    console.log('start load', {spreadsheetId, sheet});
-    if (spreadsheetId && sheet) {
-        dispatch(setState('LOADING'));
-        gapi.client.sheets.spreadsheets.values
-            .get({spreadsheetId: spreadsheetId, range: sheet})
-            .then((response) => {
-                if (response.result.values) {
-                    const colMap: {[key: string]: number} = Object.fromEntries(
-                        response.result.values[0]
-                        .filter(cell => !!cell)
-                        .map((cell, idx) => [cell, idx])
-                    );
-                    const data = response.result.values
-                        .slice(1)
-                        .map((row) => ({
-                            section: Number(row[colMap[COL_SECTION]]) || 0,
-                            num: Number(row[colMap[COL_NUMBER]]) || 0,
-                            ja: row[colMap[COL_JA]] || '',
-                            en: row[colMap[COL_EN]] || '',
-                            grammar: row[colMap[COL_GRAMMAR]] || '',
-                            note: row[colMap[COL_NOTE]] || '',
-                        }));
-                    dispatch(setData(data));
-                    console.log('loaded', {data})
-                }
-                dispatch(setState('LOADED'));
-            })
-            .catch(function () {
-                console.error({arguments});
-                dispatch(setState('FAILED'));
-            })
-    }
+export const post = (spreadsheetId: string): AppThunk => (dispatch, getState) => {
+    postSpreadsheet(spreadsheetId)
+        .catch(e => {
+            if (e === 'Not authorized') {
+                dispatch(setLoginState('REQUESTED'));
+            }
+        }).catch(console.error);
 };
+
+export const openSpreadsheet = (spreadsheetId: string): AppThunk => (dispatch) => {
+    dispatch(setState('LOADING'))
+    getSpreadsheet(spreadsheetId, 'Sheet1')
+        .then(allRows => {
+            const [header, rows] = [allRows[0], allRows.slice(1)]
+            const colMap: {[key: string]: number} = Object.fromEntries(
+                header.cells
+                .filter(cell => !!cell)
+                .map((cell, idx) => [cell, idx])
+            );
+            const data = rows
+                .map((row) => ({
+                    section: Number(row.cells[colMap[COL_SECTION]]) || 0,
+                    num: Number(row.cells[colMap[COL_NUMBER]]) || 0,
+                    ja: String(row.cells[colMap[COL_JA]] || ''),
+                    en: String(row.cells[colMap[COL_EN]] || ''),
+                    note: String(row.cells[colMap[COL_NOTE]] || ''),
+                }));
+            dispatch(setState('LOADED'))
+            dispatch(setSpreadsheetId(spreadsheetId))
+            dispatch(setData(data));
+            console.log('loaded', {data})
+        })
+        .catch(e => {
+            if (e === 'Not authorized') {
+                dispatch(setLoginState('REQUESTED'));
+            }
+        }).catch(console.error);
+};
+
 
 export default trainingSlice.reducer;
 

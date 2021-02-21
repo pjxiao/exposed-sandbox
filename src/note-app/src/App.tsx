@@ -10,7 +10,7 @@ import { Col, Container, Row } from 'react-bootstrap';
 function App() {
   const loginState = useSelector(selectState).state;
 
-  if (loginState === 'ANON') {
+  if (loginState === 'REQUESTED') {
     return (
       <Login />
     );

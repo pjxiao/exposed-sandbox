@@ -1,28 +1,67 @@
-import React from "react";
-import { Button, Container, Row, Col, Navbar, Form, FormControl, Nav, Card } from "react-bootstrap";
+import React, { useState } from "react";
+import { Button, Container, Row, Col, Navbar, Form, FormControl, Nav, Card, ListGroup } from "react-bootstrap";
 import { useSelector, useDispatch } from "react-redux";
 import { NativeText } from "../../components/NativeText";
-import { selectState, selectCurrent, setSpreadsheetId, next, prev, load, toggleVisibility } from "./trainingSlice";
+import { list } from "../../repositories/SpreadsheetRepository";
+import {
+    selectState,
+    selectCurrent,
+    openSpreadsheet,
+    next,
+    prev,
+    toggleVisibility,
+    post,
+    clearState,
+} from "./trainingSlice";
 
-export function Training() {
+
+const TrainingList = () => {
+    const dispatch = useDispatch();
+    const [spreadsheetId, setSpreadsheetId] = useState('');
+
+    const sheets = list();
+    return (
+        <>
+        <Navbar variant="dark" bg="dark">
+            <Form inline>
+                <FormControl
+                    type="text"
+                    value={spreadsheetId}
+                    className="mr-sm-2"
+                    onChange={(e) => setSpreadsheetId(e.target.value)}
+                />
+                <Button
+                    variant="outline-info"
+                    onClick={() => dispatch(post(spreadsheetId))}
+                >Load</Button>
+            </Form>
+        </Navbar>
+        <ListGroup>
+            {sheets.map((sheet, i) => (
+                <ListGroup.Item
+                    key={i}
+                    action
+                    variant='flash'
+                    onClick={() => dispatch(openSpreadsheet(sheet.spreadsheetId))}
+                >{sheet.title}</ListGroup.Item>
+            ))}
+        </ListGroup>
+        </>
+    );
+};
+
+
+export function TrainingDetail() {
     const {spreadsheetId, visibility, state} = useSelector(selectState);
     const current = useSelector(selectCurrent);
     const dispatch = useDispatch();
     return (
-        <div>
+        <>
             <Navbar variant="dark" bg="dark">
-                <Form inline>
-                    <FormControl
-                        type="text"
-                        value={spreadsheetId || ''}
-                        className="mr-sm-2"
-                        onChange={(e) => dispatch(setSpreadsheetId(e.target.value))}
-                    />
-                    <Button
-                        variant="outline-info"
-                        onClick={() => dispatch(load())}
-                    >Load</Button>
-                </Form>
+                <Navbar.Brand>{spreadsheetId}</Navbar.Brand>
+                <Nav>
+                    <Nav.Link onClick={() => dispatch(clearState())}>LIST</Nav.Link>
+                </Nav>
             </Navbar>
             <Container fluid>
                 {(() => {switch (state) {
@@ -53,6 +92,12 @@ export function Training() {
                                     <NativeText className="text-body">{current?.en}</NativeText>
                                 </Card.Body>
                             </Card>
+                            <Card className="mt-3">
+                                <Card.Header>NOTE</Card.Header>
+                                <Card.Body className={visibility === 'SHOWN' ? 'vibible' : 'invisible'}>
+                                    <NativeText className="text-body">{current?.note}</NativeText>
+                                </Card.Body>
+                            </Card>
                         </Col></Row>
                     );}
                 }})()}
@@ -80,6 +125,19 @@ export function Training() {
                     </Nav>
                 </Container>
             </Navbar>
-        </div>
+        </>
     );
+
+};
+
+
+export function Training() {
+    const {spreadsheetId} = useSelector(selectState);
+    if (spreadsheetId === null) {
+        return (<TrainingList/>);
+    } else {
+        return (<TrainingDetail />);
+    }
+
+
 };
