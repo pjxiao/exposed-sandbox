@@ -57,7 +57,7 @@ export function TrainingDetail() {
     const dispatch = useDispatch();
     return (
         <>
-            <Navbar variant="dark" bg="dark">
+            <Navbar variant="dark" bg="dark" className="oveflow-auto">
                 <Navbar.Brand>{spreadsheetId}</Navbar.Brand>
                 <Nav>
                     <Nav.Link onClick={() => dispatch(clearState())}>LIST</Nav.Link>
