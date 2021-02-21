@@ -57,13 +57,15 @@ export function TrainingDetail() {
     const dispatch = useDispatch();
     return (
         <>
-            <Navbar variant="dark" bg="dark" className="oveflow-auto">
-                <Navbar.Brand>{spreadsheetId}</Navbar.Brand>
-                <Nav>
-                    <Nav.Link onClick={() => dispatch(clearState())}>LIST</Nav.Link>
-                </Nav>
-            </Navbar>
-            <Container fluid>
+            <header>
+                <Navbar variant="dark" bg="dark" className="overflow-auto">
+                    <Navbar.Brand>{spreadsheetId}</Navbar.Brand>
+                    <Nav>
+                        <Nav.Link onClick={() => dispatch(clearState())}>LIST</Nav.Link>
+                    </Nav>
+                </Navbar>
+            </header>
+            <Container fluid className="mb-5">
                 {(() => {switch (state) {
                     case 'READY': {return (
                         <Row><Col>
@@ -95,7 +97,7 @@ export function TrainingDetail() {
                             <Card className="mt-3">
                                 <Card.Header>NOTE</Card.Header>
                                 <Card.Body className={visibility === 'SHOWN' ? 'vibible' : 'invisible'}>
-                                    <NativeText className="text-body">{current?.note}</NativeText>
+                                    <NativeText className="text-body">{current?.note || 'n/a'}</NativeText>
                                 </Card.Body>
                             </Card>
                         </Col></Row>

@@ -28,8 +28,8 @@ function* join(nodes: Iterable<ReactNode>, sep: ReactNode) {
 
 export function NativeText(props: Props) {
     const anchors = (props.children || '')
-        .replace(/([a-zA-Z0-9])([^a-zA-Z0-9 ])/g, '$1 $2')
-        .replace(/([^a-zA-Z0-9 ])([a-zA-Z0-9])/g, '$1 $2')
+        .replace(/([a-zA-Z0-9])([^a-zA-Z0-9/'., -])/g, '$1 $2')
+        .replace(/([^a-zA-Z0-9/'., -])([a-zA-Z0-9])/g, '$1 $2')
         .split(' ')
         .map((w, idx) => (
             <a

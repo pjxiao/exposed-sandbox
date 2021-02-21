@@ -1,23 +1,23 @@
 {
   "files": {
     "main.css": "/exposed-sandbox/note-app/static/css/main.e0f3f835.chunk.css",
-    "main.js": "/exposed-sandbox/note-app/static/js/main.bcdd48fc.chunk.js",
-    "main.js.map": "/exposed-sandbox/note-app/static/js/main.bcdd48fc.chunk.js.map",
+    "main.js": "/exposed-sandbox/note-app/static/js/main.f66a48cc.chunk.js",
+    "main.js.map": "/exposed-sandbox/note-app/static/js/main.f66a48cc.chunk.js.map",
     "runtime-main.js": "/exposed-sandbox/note-app/static/js/runtime-main.25275333.js",
     "runtime-main.js.map": "/exposed-sandbox/note-app/static/js/runtime-main.25275333.js.map",
     "static/css/2.1a02f21c.chunk.css": "/exposed-sandbox/note-app/static/css/2.1a02f21c.chunk.css",
-    "static/js/2.52c80633.chunk.js": "/exposed-sandbox/note-app/static/js/2.52c80633.chunk.js",
-    "static/js/2.52c80633.chunk.js.map": "/exposed-sandbox/note-app/static/js/2.52c80633.chunk.js.map",
+    "static/js/2.419086b5.chunk.js": "/exposed-sandbox/note-app/static/js/2.419086b5.chunk.js",
+    "static/js/2.419086b5.chunk.js.map": "/exposed-sandbox/note-app/static/js/2.419086b5.chunk.js.map",
     "index.html": "/exposed-sandbox/note-app/index.html",
     "static/css/2.1a02f21c.chunk.css.map": "/exposed-sandbox/note-app/static/css/2.1a02f21c.chunk.css.map",
     "static/css/main.e0f3f835.chunk.css.map": "/exposed-sandbox/note-app/static/css/main.e0f3f835.chunk.css.map",
-    "static/js/2.52c80633.chunk.js.LICENSE.txt": "/exposed-sandbox/note-app/static/js/2.52c80633.chunk.js.LICENSE.txt"
+    "static/js/2.419086b5.chunk.js.LICENSE.txt": "/exposed-sandbox/note-app/static/js/2.419086b5.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.25275333.js",
     "static/css/2.1a02f21c.chunk.css",
-    "static/js/2.52c80633.chunk.js",
+    "static/js/2.419086b5.chunk.js",
     "static/css/main.e0f3f835.chunk.css",
-    "static/js/main.bcdd48fc.chunk.js"
+    "static/js/main.f66a48cc.chunk.js"
   ]
 }
